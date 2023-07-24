@@ -1,0 +1,12 @@
+parameters:
+    level: 6
+    paths:
+        - src
+    ignoreErrors:
+        - "#iterable type#"
+        - "#^Only booleans are allowed#"
+        - "#^Unsafe usage of new static#"
+        - "#^Right side of && is always true#"
+        - "#^Method(.+)should return(.+)but returns(.+).#"
+    reportUnmatchedIgnoredErrors: false
+    checkGenericClassInNonGenericObjectType: false
