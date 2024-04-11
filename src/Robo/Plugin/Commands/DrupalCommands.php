@@ -10,13 +10,13 @@ use Robo\Task\Base\Exec;
 use Robo\Symfony\ConsoleIO;
 use RoboPackage\Core\RoboPackage;
 use Robo\Collection\CollectionBuilder;
-use RoboPackage\Core\ExecutableManager;
 use Robo\Contract\ConfigAwareInterface;
 use RoboPackage\Core\Datastore\JsonDatastore;
 use Robo\Contract\VerbosityThresholdInterface;
 use RoboPackage\Core\Traits\ConfigCommandTrait;
 use RoboPackage\Core\Traits\DatabaseCommandTrait;
 use Symfony\Component\Console\Question\Question;
+use RoboPackage\Core\Plugin\Manager\ExecutableManager;
 use RoboPackage\Core\Exception\RoboPackageRuntimeException;
 use RoboPackage\Drupal\Plugin\RoboPackage\Executable\Drush;
 
@@ -45,7 +45,7 @@ class DrupalCommands extends Tasks implements ConfigAwareInterface
     /**
      * The executable manager.
      *
-     * @var \RoboPackage\Core\ExecutableManager
+     * @var \RoboPackage\Core\Plugin\Manager\ExecutableManager
      */
     protected ExecutableManager $executableManager;
 
@@ -55,9 +55,10 @@ class DrupalCommands extends Tasks implements ConfigAwareInterface
      */
     public function __construct()
     {
+        $container = RoboPackage::getContainer();
         $this->rootPath = RoboPackage::rootPath();
         $this->composer = RoboPackage::getComposer();
-        $this->executableManager = RoboPackage::executableManager();
+        $this->executableManager = $container->get('executableManager');
     }
 
     /**
@@ -71,52 +72,10 @@ class DrupalCommands extends Tasks implements ConfigAwareInterface
     ): void {
         try {
             if ($drushExecutable = $this->drushExecutable()) {
-                $this->executeCommand(
-                    $io,
+                $this->executeEnvironmentCommand(
                     $drushExecutable
                         ->setArguments($drushCommand)
                         ->build()
-                );
-            }
-        } catch (\Exception $exception) {
-            $io->error($exception->getMessage());
-        }
-    }
-
-    /**
-     * Install the Drupal application.
-     *
-     * @param array $options
-     *   An array of command options.
-     */
-    public function drupalInstall(
-        ConsoleIO $io,
-        array $options = [
-            'profile' => 'standard',
-            'site-name' => 'Drupal Project',
-            'site-mail' => 'admin@example.com',
-            'account-name' => 'admin',
-            'account-pass' => 'admin',
-            'account-mail' => 'admin@example.com',
-        ]
-    ): void {
-        try {
-            $drushExecutable = $this->drushExecutable();
-            $drushExecutable
-                ->setCommand('site:install')
-                ->setArgument($options['profile'])
-                ->setOptions([
-                    'site-name' => $options['site-name'],
-                    'site-mail' => $options['site-mail'],
-                    'account-name' => $options['account-name'],
-                    'account-pass' => $options['account-pass'],
-                    'account-mail' => $options['account-mail'],
-                ]);
-            $result = $this->executeCommand($io, $drushExecutable->build());
-
-            if (!$result->wasSuccessful()) {
-                throw new RoboPackageRuntimeException(
-                    'The Drush installation failed!'
                 );
             }
         } catch (\Exception $exception) {
@@ -590,17 +549,14 @@ class DrupalCommands extends Tasks implements ConfigAwareInterface
     /**
      * Execute the environment command.
      *
-     * @param \Robo\Symfony\ConsoleIO $io
      * @param string $command
      *
      * @return bool|\Robo\Result
      */
-    protected function executeCommand(
-        ConsoleIO $io,
+    protected function executeEnvironmentCommand(
         string $command
     ): bool|Result {
         return $this->runConfigCommand(
-            $io,
             'execute',
             'environment',
             [$command]
