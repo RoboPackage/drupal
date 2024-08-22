@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RoboPackage\Drupal\Plugin\RoboPackage\Installable;
 
+use RoboPackage\Core\RoboPackage;
 use Psr\Container\ContainerInterface;
 use Robo\Contract\ConfigAwareInterface;
 use RoboPackage\Core\QuestionValidators;
@@ -31,6 +32,13 @@ class DrupalFramework extends InstallablePluginBase implements ConfigAwareInterf
     use EnvironmentCommandTrait;
 
     /**
+     * The project root path.
+     *
+     * @var string
+     */
+    protected string $rootPath;
+
+    /**
      * Define the class constructor.
      *
      * @param array $configuration
@@ -46,6 +54,7 @@ class DrupalFramework extends InstallablePluginBase implements ConfigAwareInterf
         protected ExecutableManager $executableManager
     )
     {
+        $this->rootPath = RoboPackage::rootPath();
         parent::__construct($configuration, $pluginDefinition);
     }
 
@@ -66,6 +75,22 @@ class DrupalFramework extends InstallablePluginBase implements ConfigAwareInterf
     }
 
     /**
+     * Get the Drupal installation profiles found on the filesystem.
+     *
+     * @return array
+     *   An array of the drupal installation profile names.
+     */
+    protected function getDrupalInstallProfileOption(): array {
+        $directories = glob("$this->rootPath/web/profiles/*/*", GLOB_ONLYDIR);
+
+        foreach ($directories as &$directory) {
+            $directory = basename($directory);
+        }
+
+        return $directories;
+    }
+
+    /**
      * @inheritDoc
      */
     protected function mainInstallation(): void
@@ -73,7 +98,12 @@ class DrupalFramework extends InstallablePluginBase implements ConfigAwareInterf
         $io = $this->io();
 
         try {
-            $drupalProfiles = ['standard', 'minimal'];
+            $drupalProfiles = array_merge([
+                'standard',
+                'minimal'
+            ], $this->getDrupalInstallProfileOption());
+            sort($drupalProfiles);
+
             $drushExecutable = $this->drushExecutable();
             $drushExecutable->setCommand('site:install');
 
